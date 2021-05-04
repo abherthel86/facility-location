@@ -6,10 +6,6 @@
 FLPModel::FLPModel(const FLPInstance &inst) {
     n_ = inst.n();
     h_ = inst.h();
-    // w_ = new int[n_];
-    // for (unsigned int i=0; i<n_; i++) {
-	// 	w_[i] = inst.q(i);
-    // }
 
     try {
 		model_ = IloModel(env_);
@@ -37,9 +33,9 @@ FLPModel::FLPModel(const FLPInstance &inst) {
 
 		IloExpr objFunction(env_);
 		//minimize cost of opening
-		// for (unsigned int j = 0; j < h_; j++){
-        // 	objFunction += inst.c(j) * y_[j];
-		// }
+		for (unsigned int j = 0; j < h_; j++){
+        	objFunction += inst.c(j) * y_[j];
+		}
 		
 		//minimize total distance
 		// for (unsigned int i = 0; i < n_; i++){
@@ -76,13 +72,6 @@ FLPModel::FLPModel(const FLPInstance &inst) {
 			cons.setName(var);
 			model_.add(cons);
 		}
-	// 	// constraint: each item must be assigned to a bin
-	// 	for (unsigned int i=1; i < n_; i++) {
-	// 		model_.add(IloSum(x_[i]) == 1);
-	// 	}
-	// 	// single-threaded solving
-	// 	cplex_.setParam( IloCplex::Threads, 1);
-	// 	cplex_.setOut(env_.getNullStream());
     } catch (IloException &e) {
 		cerr << "Error creating model: " << e.getMessage() << endl;
 		e.end();
@@ -91,34 +80,36 @@ FLPModel::FLPModel(const FLPInstance &inst) {
 }
 
 int FLPModel::solve() {
-	// int opt = -1;
-	// try {
-	// 	auto start = cplex_.getTime();
-	// 	cplex_.solve();
-	// 	auto elapsed = cplex_.getTime() - start;
-	// 	if (cplex_.getStatus() == IloAlgorithm::Optimal) {
-	// 		opt = cplex_.getObjValue();
-	// 		cout << "Solution with " << opt << " vehicles found in \t" << elapsed << " seconds" << endl;
-	// 		for (unsigned int j = 0; j < nbinsmax_; j++) {
-	// 			if (cplex_.getValue(y_[j]) > 0.5) {
-	// 				cout << "\tVehicle " << j << ":";
-	// 				for (unsigned int i = 1; i < n_; i++) {
-	// 					if (cplex_.getValue(x_[i][j]) > 0.5) {
-	// 						cout << " " << i;
-	// 					}
-	// 				}
-	// 				cout << endl;
-	// 			}
-	// 		}
-	// 	}
-	// 	else {
-	// 		cout << "No feasible solution found" << endl;
-	// 	}
-	// }
-	// catch (IloException& e) {
-	// 	cerr << "Error solving model: " << e.getMessage() << endl;
-	// 	e.end();
-	// }
-	// return opt;
+	int opt = -1;
+	cout << "In solve" << endl;
+	getchar();
+	try {
+		auto start = cplex_.getTime();
+		cplex_.solve();
+		auto elapsed = cplex_.getTime() - start;
+		if (cplex_.getStatus() == IloAlgorithm::Optimal) {
+			opt = cplex_.getObjValue();
+			cout << "Solution found in \t" << elapsed << " seconds" << endl;
+			for (unsigned int j = 0; j < h_; j++) {
+				if (cplex_.getValue(y_[j]) > 0.5) {
+					cout << "\tFacility " << j << ":";
+					for (unsigned int i = 1; i < n_; i++) {
+						if (cplex_.getValue(x_[i][j]) > 0.5) {
+							cout << " " << i;
+						}
+					}
+					cout << endl;
+				}
+			}
+		}
+		else {
+			cout << "No feasible solution found" << endl;
+		}
+	}
+	catch (IloException& e) {
+		cerr << "Error solving model: " << e.getMessage() << endl;
+		e.end();
+	}
+	return opt;
 }
 
