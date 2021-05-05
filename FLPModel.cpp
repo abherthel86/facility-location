@@ -29,9 +29,7 @@ FLPModel::FLPModel(const FLPInstance &inst) {
 				model_.add(x_[i][j]);
 			}			
 		}
-		// objective function
-
-
+		//objective functions
 		//minimize cost of opening
 		IloExpr expr1(env_);
 		for (unsigned int j = 0; j < h_; j++){
@@ -48,8 +46,6 @@ FLPModel::FLPModel(const FLPInstance &inst) {
 			}
 		}
 		objF_2 = IloMinimize(env_, expr2);
-
-		// model_.add(IloMinimize(env_, objFunction));
 
 		// constraint: all customers must be served
 		for (unsigned int i = 0; i < n_; i++) {
@@ -82,7 +78,6 @@ FLPModel::FLPModel(const FLPInstance &inst) {
 		e.end();
     }
 	cplex_.setOut(env_.getNullStream());
-
 }
 
 int FLPModel::solve() {
@@ -91,6 +86,7 @@ int FLPModel::solve() {
 		auto start = cplex_.getTime();
 		cplex_.solve();
 		auto elapsed = cplex_.getTime() - start;
+		solving_time.push_back(elapsed);
 		if (cplex_.getStatus() == IloAlgorithm::Optimal) {
 			opt = cplex_.getObjValue();
 			cout << "Solution found in \t" << elapsed << " seconds" << endl;
@@ -121,7 +117,7 @@ void FLPModel::epsilon(const FLPInstance &inst) {
 	vector< pair<int, int> > opt_sol;
 	pair<int, int> opt_pair;
 
-	int epsilon = numeric_limits<int>::max();
+	double epsilon = IloInfinity;
 	int omega = 1;
 
 	int z1, z2;
@@ -131,14 +127,6 @@ void FLPModel::epsilon(const FLPInstance &inst) {
 	
 	IloExpr expr_1 = objF_1.getExpr();
 	IloExpr expr_2 = objF_2.getExpr();
-	//f2 as constraint
-	// IloExpr expr(env_);
-
-	// for (unsigned int i = 0; i < n_; i++){
-	// 	for (unsigned int j = 0; j < h_; j++){
-	// 		expr += inst.d(i,j) * x_[i][j];
-	// 	}
-	// }
 
 	IloRange cons_f1;
 	IloRange cons_f2;
@@ -150,46 +138,18 @@ void FLPModel::epsilon(const FLPInstance &inst) {
 
 
 	while (true) {
-		cons_f2.setUB(epsilon);
 
 		model_.add(objF_1);
-
-		//optimize the first objective
-		//std::cout << std::endl << model_ << std::endl;
-
-		// cplex_.exportModel("flp1.lp");
-		// cout << "Stop1: Add f2 as constraint and f1 as OF" << endl;
-		// getchar();
 
 		z1 = solve();
 		if (cplex_.getStatus() != IloAlgorithm::Optimal){
 			break;
 		}
 
-		// cout << "Value of z1: " << z1 << endl;
-		// getchar();
-
-		// //collect the objective values
-		// f1 = get_f1(inst);
-		// f2 = get_f2(inst);
-		// opt_pair.first = f1;
-		// opt_pair.second = f2;
-		// opt_sol.push_back(opt_pair);
-		
 		//changing the OF
 		model_.remove(objF_1);
 
-		// cplex_.exportModel("flp1.lp");
-		// cout << "Stop2: remove f1 as OF" << endl;
-		// getchar();
-
-		// model_.remove(cons_f2);
-
 		model_.add(objF_2);
-
-		// cplex_.exportModel("flp1.lp");
-		// cout << "Stop3:add f2 as OF" << endl;
-		// getchar();
 
 		//bounding f1
 		sprintf (var_1, "ConstraintF1");
@@ -197,18 +157,12 @@ void FLPModel::epsilon(const FLPInstance &inst) {
 		cons_f1.setName(var_1);
 		model_.add(cons_f1);
 
-		// cplex_.exportModel("flp1.lp");
-		// cout << "Stop3: add f1 as constraint (bound by last z1)" << endl;
-		// getchar();
-
 		z2 = solve();
 		if (cplex_.getStatus() != IloAlgorithm::Optimal){
 			break;
 		}
 
 		//collect the objective values
-		// f1 = get_f1(inst);
-		// f2 = get_f2(inst);
 		opt_pair.first = z1;
 		opt_pair.second = z2;
 
@@ -217,21 +171,14 @@ void FLPModel::epsilon(const FLPInstance &inst) {
 		model_.remove(cons_f1);
 
 		cplex_.exportModel("flp1.lp");
-		// cout << "Stop4: remove f1 as constraint" << endl;
-		// getchar();
 
 		epsilon = z2 - omega;
-
-		// cout << "Value of z2: " << z2 << endl;
-		// getchar();
 
 		//changing the OF
 		model_.remove(objF_2);
 
-		// //update upper bound constraint on f2
-		// cons_f2.setUB(f2 - omega);
-
-		count ++;
+		//update upper bound constraint on f2
+		cons_f2.setUB(epsilon);
 	}
 
 	// print the pareto frontier
@@ -241,23 +188,4 @@ void FLPModel::epsilon(const FLPInstance &inst) {
 		cout << opt_sol[i].first << "\t\t" << opt_sol[i].second << endl;
 	}
 
-}
-
-int FLPModel::get_f1(const FLPInstance &inst){
-	int f1 = 0;
-	for (int j = 0; j < h_; ++j)
-	{
-		f1 += cplex_.getValue(y_[j]) * inst.c(j);
-	}
-	return f1;
-}
-
-int FLPModel::get_f2(const FLPInstance &inst){
-	int f2 = 0;
-	for (int i = 0; i < n_; ++i){
-		for (int j = 0; j < h_; ++j){
-			f2 += cplex_.getValue(x_[i][j]) * inst.d(i,j);
-		}
-	}
-	return f2;
 }
