@@ -11,7 +11,7 @@ FLPInstance::FLPInstance(string fname) {
 
 void FLPInstance::readInst(string fname) {
     string line;
-    ifstream in(fname.c_str(), ios::in);
+    ifstream in(fname.c_str());
     filename_ = fname;
     if (! in.is_open()){
         cerr << "can't open file: " << fname << endl;
@@ -29,12 +29,12 @@ void FLPInstance::readInst(string fname) {
     // Customers
     for (int i = 0; i < n_; i++){
         in >> q_[i];
-        // cout << "i: " << i << " demand: " << q(i) << endl;
-        // getchar();
+         //cout << "i: " << i << " demand: " << q(i) << endl;
+         //getchar();
         for (int j = 0; j < h_; j++){
             in >> d_[i * h_ + j];
-            // cout << "j: " << j << " dist: " << d(i,j) << endl;
-            // getchar();
+             //cout << "j: " << j << " dist: " << d(i,j) << endl;
+             //getchar();
         }
     }
     // Facilities
