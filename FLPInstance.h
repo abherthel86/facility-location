@@ -25,7 +25,6 @@ protected:
     // delta
     int delta_;
     // distance matrix using a flat representation, i.e. d(i,j) is d[i*n+j]
-    // d[i*n+j] already contains the service time at j!
     int *d_;
     // read the provided instance
     void readInst(string filename);
