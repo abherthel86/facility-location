@@ -29,12 +29,8 @@ void FLPInstance::readInst(string fname) {
     // Customers
     for (int i = 0; i < n_; i++){
         in >> q_[i];
-        // cout << "i: " << i << " demand: " << q(i) << endl;
-        // getchar();
         for (int j = 0; j < h_; j++){
             in >> d_[i * h_ + j];
-            // cout << "j: " << j << " dist: " << d(i,j) << endl;
-            // getchar();
         }
     }
     // Facilities
