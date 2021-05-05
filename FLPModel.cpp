@@ -6,11 +6,7 @@
 FLPModel::FLPModel(const FLPInstance &inst) {
     n_ = inst.n();
     h_ = inst.h();
-    // w_ = new int[n_];
-    // for (unsigned int i=0; i<n_; i++) {
-	// 	w_[i] = inst.q(i);
-    // }
-
+	int opt = 0;
     try {
 		model_ = IloModel(env_);
 		cplex_ = IloCplex(model_);
@@ -33,22 +29,23 @@ FLPModel::FLPModel(const FLPInstance &inst) {
 				model_.add(x_[i][j]);
 			}			
 		}
-		// objective function
-
-		IloExpr objFunction(env_);
+		//objective functions
 		//minimize cost of opening
-		// for (unsigned int j = 0; j < h_; j++){
-        // 	objFunction += inst.c(j) * y_[j];
-		// }
-		
-		//minimize total distance
-		// for (unsigned int i = 0; i < n_; i++){
-		// 	for (unsigned int j = 0; j < h_; j++){
-		// 		objFunction += inst.d(i,j) * x_[i][j];
-		// 	}
-		// }
+		IloExpr expr1(env_);
+		for (unsigned int j = 0; j < h_; j++){
+        	expr1 += inst.c(j) * y_[j];
+		}
 
-		model_.add(IloMinimize(env_, objFunction));
+		objF_1 = IloMinimize(env_, expr1);
+
+		// minimize total distance
+		IloExpr expr2(env_);
+		for (unsigned int i = 0; i < n_; i++){
+			for (unsigned int j = 0; j < h_; j++){
+				expr2 += inst.d(i,j) * x_[i][j];
+			}
+		}
+		objF_2 = IloMinimize(env_, expr2);
 
 		// constraint: all customers must be served
 		for (unsigned int i = 0; i < n_; i++) {
@@ -76,49 +73,119 @@ FLPModel::FLPModel(const FLPInstance &inst) {
 			cons.setName(var);
 			model_.add(cons);
 		}
-	// 	// constraint: each item must be assigned to a bin
-	// 	for (unsigned int i=1; i < n_; i++) {
-	// 		model_.add(IloSum(x_[i]) == 1);
-	// 	}
-	// 	// single-threaded solving
-	// 	cplex_.setParam( IloCplex::Threads, 1);
-	// 	cplex_.setOut(env_.getNullStream());
     } catch (IloException &e) {
 		cerr << "Error creating model: " << e.getMessage() << endl;
 		e.end();
     }
-	cplex_.exportModel("flp1.lp");
+	cplex_.setOut(env_.getNullStream());
 }
 
 int FLPModel::solve() {
-	// int opt = -1;
-	// try {
-	// 	auto start = cplex_.getTime();
-	// 	cplex_.solve();
-	// 	auto elapsed = cplex_.getTime() - start;
-	// 	if (cplex_.getStatus() == IloAlgorithm::Optimal) {
-	// 		opt = cplex_.getObjValue();
-	// 		cout << "Solution with " << opt << " vehicles found in \t" << elapsed << " seconds" << endl;
-	// 		for (unsigned int j = 0; j < nbinsmax_; j++) {
-	// 			if (cplex_.getValue(y_[j]) > 0.5) {
-	// 				cout << "\tVehicle " << j << ":";
-	// 				for (unsigned int i = 1; i < n_; i++) {
-	// 					if (cplex_.getValue(x_[i][j]) > 0.5) {
-	// 						cout << " " << i;
-	// 					}
-	// 				}
-	// 				cout << endl;
-	// 			}
-	// 		}
-	// 	}
-	// 	else {
-	// 		cout << "No feasible solution found" << endl;
-	// 	}
-	// }
-	// catch (IloException& e) {
-	// 	cerr << "Error solving model: " << e.getMessage() << endl;
-	// 	e.end();
-	// }
-	// return opt;
+	int opt = -1;
+	try {
+		auto start = cplex_.getTime();
+		cplex_.solve();
+		auto elapsed = cplex_.getTime() - start;
+		solving_time.push_back(elapsed);
+		if (cplex_.getStatus() == IloAlgorithm::Optimal) {
+			opt = cplex_.getObjValue();
+			cout << "Solution found in \t" << elapsed << " seconds" << endl;
+			for (unsigned int j = 0; j < h_; j++) {
+				if (cplex_.getValue(y_[j]) > 0.5) {
+					cout << "\tFacility " << j << ":";
+					for (unsigned int i = 1; i < n_; i++) {
+						if (cplex_.getValue(x_[i][j]) > 0.5) {
+							cout << " " << i;
+						}
+					}
+					cout << endl;
+				}
+			}
+		}
+		else {
+			cout << "No feasible solution found" << endl;
+		}
+	}
+	catch (IloException& e) {
+		cerr << "Error solving model: " << e.getMessage() << endl;
+		e.end();
+	}
+	return opt;
 }
 
+void FLPModel::epsilon(const FLPInstance &inst) {
+	vector< pair<int, int> > opt_sol;
+	pair<int, int> opt_pair;
+
+	double epsilon = IloInfinity;
+	int omega = 1;
+
+	int z1, z2;
+	int f1, f2;
+
+	int count = 0;
+	
+	IloExpr expr_1 = objF_1.getExpr();
+	IloExpr expr_2 = objF_2.getExpr();
+
+	IloRange cons_f1;
+	IloRange cons_f2;
+
+	sprintf (var_2, "ConstraintF2");
+	cons_f2 = (expr_2 <= epsilon);
+	cons_f2.setName(var_2);
+	model_.add(cons_f2);
+
+
+	while (true) {
+
+		model_.add(objF_1);
+
+		z1 = solve();
+		if (cplex_.getStatus() != IloAlgorithm::Optimal){
+			break;
+		}
+
+		//changing the OF
+		model_.remove(objF_1);
+
+		model_.add(objF_2);
+
+		//bounding f1
+		sprintf (var_1, "ConstraintF1");
+		IloRange cons_f1 = (expr_1 <= z1);
+		cons_f1.setName(var_1);
+		model_.add(cons_f1);
+
+		z2 = solve();
+		if (cplex_.getStatus() != IloAlgorithm::Optimal){
+			break;
+		}
+
+		//collect the objective values
+		opt_pair.first = z1;
+		opt_pair.second = z2;
+
+		opt_sol.push_back(opt_pair);
+
+		model_.remove(cons_f1);
+
+		cplex_.exportModel("flp1.lp");
+
+		epsilon = z2 - omega;
+
+		//changing the OF
+		model_.remove(objF_2);
+
+		//update upper bound constraint on f2
+		cons_f2.setUB(epsilon);
+	}
+
+	// print the pareto frontier
+	cout << "f1: cost" << "\tf2: dist" << endl;
+	for (int i = 0; i < opt_sol.size(); ++i)
+	{
+		cout << opt_sol[i].first << "\t\t" << opt_sol[i].second << endl;
+	}
+
+}

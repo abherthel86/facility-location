@@ -15,10 +15,12 @@ typedef IloArray<IloBoolVarArray> IloBoolVarMatrix;
 class FLPModel {
 protected:
 	char var[100];
+    char var_1[100];
+    char var_2[100];
     int n_; // number of customers
     int h_; //number of facilities
     // int *q_; 
-    // // facility cost
+    // facility cost
     // int *c_;
     // // facility capacity
     // int *Q_;
@@ -34,13 +36,20 @@ protected:
     IloBoolVarArray y_; // y decision variables
     IloBoolVarMatrix x_; // x decision variables
 
+	IloObjective objF_1;
+	IloObjective objF_2;
+
 public:
     // construct model out of FLP instance
     FLPModel(const FLPInstance &inst);
 
     // solve this model
     int solve();
+    //add epsilon constraint
+    void epsilon(const FLPInstance &inst);
 
+    int get_f1(const FLPInstance &inst);
+    int get_f2(const FLPInstance &inst);
 };
 
 #endif
