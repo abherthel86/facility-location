@@ -42,14 +42,10 @@ protected:
 public:
     // construct model out of FLP instance
     FLPModel(const FLPInstance &inst);
-
     // solve this model
     int solve();
     //add epsilon constraint
     void epsilon(const FLPInstance &inst);
-
-    int get_f1(const FLPInstance &inst);
-    int get_f2(const FLPInstance &inst);
 };
 
 #endif
