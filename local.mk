@@ -2,8 +2,8 @@
 SYSTEM     = x86-64_linux
 LIBFORMAT  = static_pic
 # CPLEX common directories
-#CPLEXDIR   = /opt/cplex/current/cplex
-CPLEXDIR   = /opt/ibm/ILOG/CPLEX_Studio1210/cplex
+CPLEXDIR   = /opt/cplex/current/cplex
+#CPLEXDIR   = /opt/ibm/ILOG/CPLEX_Studio1210/cplex
 
 CONCERTDIR = $(CPLEXDIR)/../concert
 CPLEXLIBDIR   = $(CPLEXDIR)/lib/$(SYSTEM)/$(LIBFORMAT)
